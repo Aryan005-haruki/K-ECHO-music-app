@@ -96,8 +96,8 @@ export default function PlaylistDetailScreen({ route, navigation }) {
   const handleShare = async (item, isPlaylist = false) => {
     try {
       const message = isPlaylist 
-        ? `Check out this playlist "${item.title}" on NeonPulse!`
-        : `Listening to "${item.title}" by ${item.artist} on NeonPulse!`;
+        ? `Check out this playlist "${item.title}" on K-ECHO!`
+        : `Listening to "${item.title}" by ${item.artist} on K-ECHO!`;
       await Share.share({ message });
     } catch (error) {
       console.error(error);

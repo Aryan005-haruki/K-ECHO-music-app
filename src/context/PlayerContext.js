@@ -1,5 +1,5 @@
 /**
- * PlayerContext.js  –  NeonPulse Complete Music Engine
+ * PlayerContext.js  –  K-ECHO Complete Music Engine
  *
  * Features:
  *  ✅ Infinite queue – next/prev with no limit
@@ -33,13 +33,13 @@ import RecommendationService from '../services/RecommendationService';
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
-const STORAGE_LIKED           = '@neonpulse_liked';
-const STORAGE_RECENT          = '@neonpulse_recent';
-const STORAGE_PLAYLISTS       = '@neonpulse_playlists';
-const STORAGE_LIKED_PLAYLISTS = '@neonpulse_liked_playlists';
-const STORAGE_LIKED_TRACKS    = '@neonpulse_liked_tracks';
-const STORAGE_FEEDBACK        = '@neonpulse_feedback';
-const STORAGE_ONBOARDING      = '@neonpulse_onboarding';
+const STORAGE_LIKED           = '@kecho_liked';
+const STORAGE_RECENT          = '@kecho_recent';
+const STORAGE_PLAYLISTS       = '@kecho_playlists';
+const STORAGE_LIKED_PLAYLISTS = '@kecho_liked_playlists';
+const STORAGE_LIKED_TRACKS    = '@kecho_liked_tracks';
+const STORAGE_FEEDBACK        = '@kecho_feedback';
+const STORAGE_ONBOARDING      = '@kecho_onboarding';
 const MAX_RECENT              = 50;
 
 const HEADERS = {
@@ -61,7 +61,7 @@ function buildRnTrack(track, resolvedUrl) {
       url: String(url),
       title: String(track.title || 'Unknown Title'),
       artist: String(track.artist || 'Unknown Artist'),
-      artwork: String(track.artwork || track.image || 'https://api.dicebear.com/7.x/initials/svg?seed=NeonPulse'),
+      artwork: String(track.artwork || track.image || 'https://api.dicebear.com/7.x/initials/svg?seed=K-ECHO'),
       duration: Number(track.durationSecs || 0), // Fix: use seconds, avoid NaN from "M:SS" string
       headers: HEADERS
     };

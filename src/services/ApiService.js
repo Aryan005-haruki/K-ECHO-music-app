@@ -62,7 +62,7 @@ function fmtSecs(s) {
 }
 
 function fixArt(url) {
-  if (!url) return 'https://api.dicebear.com/7.x/initials/svg?seed=NeonPulse';
+  if (!url) return 'https://api.dicebear.com/7.x/initials/svg?seed=K-ECHO';
   let finalUrl = '';
   if (Array.isArray(url)) {
     finalUrl = url[url.length - 1]?.link || url[url.length - 1] || '';
@@ -72,7 +72,7 @@ function fixArt(url) {
     finalUrl = url;
   }
   
-  if (typeof finalUrl !== 'string') return 'https://api.dicebear.com/7.x/initials/svg?seed=NeonPulse';
+  if (typeof finalUrl !== 'string') return 'https://api.dicebear.com/7.x/initials/svg?seed=K-ECHO';
 
   return finalUrl
     .replace('150x150', '500x500')
@@ -188,7 +188,7 @@ export async function searchSaavnVideos(query, limit = 15) {
 const MEM_CACHE = new Map();
 
 // Caching utility for low-data speed optimization
-const CACHE_PREFIX = '@neonpulse_v3_cache_';
+const CACHE_PREFIX = '@kecho_v3_cache_';
 async function getCache(key) {
   // 1. Check Memory Cache first (Instant)
   if (MEM_CACHE.has(key)) return MEM_CACHE.get(key);

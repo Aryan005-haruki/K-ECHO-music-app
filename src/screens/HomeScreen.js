@@ -385,7 +385,7 @@ export default function HomeScreen({ navigation }) {
 
       <Animated.View style={[styles.stickyHeader, { opacity: headerOpacity }]}>
         <View style={styles.headerContent}>
-          <Text style={styles.stickyTitle}>NeonPulse</Text>
+          <Text style={styles.stickyTitle}>K-ECHO</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity onPress={resetUserExperience} style={{marginRight: 15}}>
                <Ionicons name="refresh-circle" size={24} color="rgba(255,255,255,0.4)" />
@@ -410,7 +410,7 @@ export default function HomeScreen({ navigation }) {
                <TouchableOpacity style={styles.userAvatarHeader} onPress={() => navigation.navigate('Library')}>
                   <Text style={styles.avatarText}>A</Text>
                </TouchableOpacity>
-               <Text style={[styles.mainGreeting, {marginLeft: 12}]}>NeonPulse</Text>
+               <Text style={[styles.mainGreeting, {marginLeft: 12}]}>K-ECHO</Text>
              </View>
              <View style={{flexDirection: 'row', alignItems: 'center'}}>
                <TouchableOpacity onPress={() => navigation.navigate('Search')}>
@@ -511,7 +511,7 @@ export default function HomeScreen({ navigation }) {
                    <View style={styles.pulseMixBadge}><Text style={styles.mixText}>MIX</Text></View>
                 </View>
                 <Text style={styles.squareTitle} numberOfLines={1}>{track.title}</Text>
-                <Text style={styles.squareSub} numberOfLines={1}>Playlist • NeonPulse</Text>
+                <Text style={styles.squareSub} numberOfLines={1}>Playlist • K-ECHO</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>

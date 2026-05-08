@@ -193,7 +193,7 @@ export default function FullScreenPlayer({ visible, onClose }) {
         break;
       case 'share':
         Share.share({
-          message: `Check out ${currentTrack.title} by ${currentTrack.artist} on NeonPulse!`,
+          message: `Check out ${currentTrack.title} by ${currentTrack.artist} on K-ECHO!`,
           url: currentTrack.url || `https://www.jiosaavn.com/song/${currentTrack.id}`
         });
         break;

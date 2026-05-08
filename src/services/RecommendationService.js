@@ -1,7 +1,7 @@
 import { getRadioSuggestions, getTrendingTracks, getNewReleases, searchSaavn } from './ApiService';
 
 /**
- * NeonPulse AI Recommendation Engine (Memory Optimized)
+ * K-ECHO AI Recommendation Engine (Memory Optimized)
  */
 
 class RecommendationService {
