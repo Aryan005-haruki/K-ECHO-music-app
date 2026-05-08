@@ -1,4 +1,8 @@
 import { View, Text, StatusBar, LogBox } from 'react-native';
+import { useEffect, useCallback } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 import { Ionicons } from '@expo/vector-icons';
 
 // LogBox.ignoreAllLogs();
@@ -128,6 +132,15 @@ function MainLayout() {
 function RootNavigator() {
   const { recentlyPlayed, onboardingData, isDataLoaded } = usePlayer();
   
+  useEffect(() => {
+    async function hideSplash() {
+      if (isDataLoaded) {
+        await SplashScreen.hideAsync();
+      }
+    }
+    hideSplash();
+  }, [isDataLoaded]);
+
   if (!isDataLoaded) return null; // Wait for storage load
 
   const showOnboarding = !onboardingData.completed;
