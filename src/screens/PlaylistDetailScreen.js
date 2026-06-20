@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, Feather, MaterialIcons } from '@expo/vector-icons';
-import { getPlaylistTracks, getArtistTracks, searchYouTube, getiTunesArtistTracks, searchiTunesArtistTracksByName } from '../services/ApiService';
+import { getPlaylistTracks, getArtistTracks, getiTunesArtistTracks, searchiTunesArtistTracksByName } from '../services/ApiService';
 import { usePlayer } from '../context/PlayerContext';
 import { COLORS } from '../data/musicData';
 
@@ -22,7 +22,8 @@ export default function PlaylistDetailScreen({ route, navigation }) {
   const { 
     playTrack, currentTrack, liked, toggleLike, addToQueue, insertNext, 
     toggleShuffle, isShuffle, recentlyPlayed, userPlaylists, addToUserPlaylist,
-    likedPlaylists, toggleLikePlaylist, likedTracks
+    likedPlaylists, toggleLikePlaylist, likedTracks,
+    downloadTrack, downloadedTracks, removeDownload, downloadingIds
   } = usePlayer();
   const scrollY = new Animated.Value(0);
 
@@ -39,6 +40,8 @@ export default function PlaylistDetailScreen({ route, navigation }) {
         if (playlist.id === 'liked') {
           // Use real liked tracks metadata
           res = likedTracks;
+        } else if (playlist.id === 'downloads') {
+          res = downloadedTracks;
         } else if (playlist.isUserPlaylist) {
           // Load from user playlist
           res = playlist.tracks || [];
@@ -54,7 +57,7 @@ export default function PlaylistDetailScreen({ route, navigation }) {
       setLoading(false);
     }
     loadTracks();
-  }, [playlist, likedTracks]);
+  }, [playlist, likedTracks, downloadedTracks]);
 
   const openBottomSheet = (track) => {
     setActiveTrack(track);
@@ -105,7 +108,13 @@ export default function PlaylistDetailScreen({ route, navigation }) {
   };
 
   const handleDownload = (item) => {
-    ToastAndroid.show(`Starting download: ${item.title}`, ToastAndroid.SHORT);
+    const isDownloaded = downloadedTracks?.some(t => t.id === item.id);
+    if (isDownloaded) {
+      ToastAndroid.show(`Already Downloaded`, ToastAndroid.SHORT);
+    } else {
+      ToastAndroid.show(`Downloading ${item.title}...`, ToastAndroid.SHORT);
+      downloadTrack(item);
+    }
   };
 
   const handleAddToPlaylist = (item) => {
@@ -138,7 +147,7 @@ export default function PlaylistDetailScreen({ route, navigation }) {
           playTrack(item, cleanTracks, idx >= 0 ? idx : 0);
         }}
       >
-        <Image source={{ uri: item.artwork }} style={styles.trackImage} />
+        <Image source={{ uri: item.artwork || 'https://api.dicebear.com/7.x/initials/svg?seed=' + (item.title || 'Track') }} style={styles.trackImage} />
         <View style={styles.trackInfo}>
           <Text style={styles.trackTitle} numberOfLines={1}>{item.title || 'Unknown'}</Text>
           <Text style={styles.trackArtist} numberOfLines={1}>
@@ -293,9 +302,17 @@ export default function PlaylistDetailScreen({ route, navigation }) {
                     <TouchableOpacity style={styles.optionItem} onPress={() => {
                       handleDownload(activeTrack);
                       setIsModalVisible(false);
-                    }}>
-                      <Feather name="download" size={24} color="white" />
-                      <Text style={styles.optionText}>Download</Text>
+                    }} disabled={!!(activeTrack?.id && downloadingIds?.has?.(activeTrack.id))}>
+                      {activeTrack?.id && downloadingIds?.has?.(activeTrack.id) ? (
+                        <ActivityIndicator size="small" color="white" style={{marginRight: 10}} />
+                      ) : downloadedTracks?.some(t => t.id === activeTrack?.id) ? (
+                        <Ionicons name="cloud-done" size={24} color="#1DB954" />
+                      ) : (
+                        <Feather name="download" size={24} color="white" />
+                      )}
+                      <Text style={styles.optionText}>
+                        {activeTrack?.id && downloadingIds?.has?.(activeTrack.id) ? 'Downloading...' : downloadedTracks?.some(t => t.id === activeTrack?.id) ? 'Downloaded' : 'Download'}
+                      </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.optionItem} onPress={() => {

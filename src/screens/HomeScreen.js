@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Image, ActivityIndicator, Animated, Dimensions, StatusBar,
-  FlatList
+  FlatList, ToastAndroid
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -97,8 +97,17 @@ const QuickPicksCarousel = ({ data, loading, onPlay }) => {
                   <Text style={styles.qpTitle} numberOfLines={1}>{track.title}</Text>
                   <Text style={styles.qpArtist} numberOfLines={1}>{track.artist} • Pulse Mix</Text>
                 </View>
-                <TouchableOpacity style={styles.moreBtn}>
-                  <Ionicons name="ellipsis-vertical" size={20} color="#777" />
+                <TouchableOpacity 
+                  style={styles.moreBtn} 
+                  onPress={() => {
+                    if (onPlay && onPlay.insertNext) {
+                      onPlay.insertNext(track);
+                      ToastAndroid.show(`${track.title} will play next`, ToastAndroid.SHORT);
+                    }
+                  }}
+                  hitSlop={{top: 15, bottom: 15, left: 15, right: 15}}
+                >
+                  <Ionicons name="add-circle-outline" size={22} color="#777" />
                 </TouchableOpacity>
               </TouchableOpacity>
             ))}
@@ -125,7 +134,8 @@ export default function HomeScreen({ navigation }) {
     feedback, 
     likedTracks, 
     onboardingData, 
-    resetUserExperience 
+    resetUserExperience,
+    insertNext
   } = usePlayer();
   
   const [loading, setLoading] = useState(true);
@@ -461,7 +471,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.sectionSub}>START RADIO</Text>
               <Text style={styles.speedDialTitle}>{isNewUser ? 'Quick Play' : 'Quick picks'}</Text>
             </View>
-            <TouchableOpacity style={styles.playAllBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.playAllBtn} activeOpacity={0.7} onPress={() => { const flat = quickPicks.flat().filter(t => t && t.id); if (flat.length) handlePlay(flat[0], flat); }}>
               <Text style={styles.playAllText}>Play all</Text>
             </TouchableOpacity>
           </View>
@@ -469,7 +479,7 @@ export default function HomeScreen({ navigation }) {
           <QuickPicksCarousel 
             data={quickPicks} 
             loading={loading} 
-            onPlay={(track) => handlePlay(track, quickPicks.flat())} 
+            onPlay={Object.assign((track) => handlePlay(track, quickPicks.flat()), { insertNext })} 
           />
         </View>
 

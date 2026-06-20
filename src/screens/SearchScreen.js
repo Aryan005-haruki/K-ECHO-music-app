@@ -85,6 +85,21 @@ export default function SearchScreen({ navigation }) {
     } catch (e) {}
   };
 
+  const clearHistory = async () => {
+    try {
+      setHistory([]);
+      await AsyncStorage.removeItem(HISTORY_KEY);
+    } catch (e) {}
+  };
+
+  const removeHistoryItem = async (term) => {
+    try {
+      const newHist = history.filter(t => t !== term);
+      setHistory(newHist);
+      await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(newHist));
+    } catch (e) {}
+  };
+
   const fetchSuggestions = async (val) => {
     if (val.length < 2) {
       setSuggestions([]);
@@ -376,6 +391,30 @@ export default function SearchScreen({ navigation }) {
         <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {!searched && (query.length === 0) && (
             <View style={styles.browseContainer}>
+              {/* Search History */}
+              {history.length > 0 && (
+                <View style={{ marginBottom: 28 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                    <Text style={styles.sectionTitleRed}>Recent Searches</Text>
+                    <TouchableOpacity onPress={clearHistory}>
+                      <Text style={{ color: '#888', fontSize: 13, fontWeight: '700' }}>Clear All</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {history.slice(0, 6).map((term, i) => (
+                    <TouchableOpacity 
+                      key={i} 
+                      style={[styles.suggestionRow, { borderBottomWidth: 1, borderBottomColor: '#111', paddingVertical: 14 }]} 
+                      onPress={() => handleSearchSubmit(term)}
+                    >
+                      <Ionicons name="time-outline" size={20} color="#555" />
+                      <Text style={[styles.suggestionText, { flex: 1, marginLeft: 16 }]}>{term}</Text>
+                      <TouchableOpacity onPress={() => removeHistoryItem(term)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <Ionicons name="close" size={18} color="#444" />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               <Text style={styles.sectionTitleRed}>Moods & moments</Text>
               <View style={styles.browseGrid}>
                 {browseMoods.map(renderBrowseCard)}

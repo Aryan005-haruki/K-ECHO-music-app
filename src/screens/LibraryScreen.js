@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -35,11 +35,27 @@ export default function LibraryScreen({ navigation }) {
     recentlyPlayed, 
     likedPlaylists,
     likedTracks,
-    playTrack
+    playTrack,
+    downloadedTracks,
+    removeDownload
   } = usePlayer();
 
+  // Derive unique artists from history + liked tracks
+  const uniqueArtists = useMemo(() => {
+    const artistMap = new Map();
+    [...recentlyPlayed, ...likedTracks].filter(Boolean).forEach(track => {
+      if (track.artist && !artistMap.has(track.artist)) {
+        artistMap.set(track.artist, { name: track.artist, artwork: track.artwork, id: track.artistId || track.artist });
+      }
+    });
+    return Array.from(artistMap.values()).slice(0, 30);
+  }, [recentlyPlayed, likedTracks]);
+
+  // Derive liked albums
+  const likedAlbums = useMemo(() => likedPlaylists.filter(p => p.isAlbum), [likedPlaylists]);
+
   const scrollY = useRef(new Animated.Value(0)).current;
-  const filters = ['All', 'Playlists', 'Artists', 'Albums', 'Downloads'];
+  const filters = ['All', 'Playlists', 'Artists', 'Albums'];
 
   // Handle hardware back button for modal
   useEffect(() => {
@@ -134,40 +150,136 @@ export default function LibraryScreen({ navigation }) {
     </TouchableOpacity>
   );
 
-  const renderRecentlyPlayed = () => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recently Played</Text>
-        <TouchableOpacity>
-          <Text style={styles.seeAllText}>See all</Text>
-        </TouchableOpacity>
-      </View>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        contentContainerStyle={styles.recentScrollContent}
-      >
-        {(recentlyPlayed || []).filter(t => t && !t.isSnippet).slice(0, 15).map((item, idx) => (
+  const renderRecentlyPlayed = () => {
+    const cleanHistory = (recentlyPlayed || []).filter(t => t && !t.isSnippet);
+    
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recently Played</Text>
+          {cleanHistory.length > 0 && (
+            <TouchableOpacity onPress={() => {
+              navigation.navigate('PlaylistDetail', { 
+                playlist: { 
+                  id: 'recent', title: 'Recently Played', 
+                  artist: 'Your History',
+                  artwork: cleanHistory[0]?.artwork || '',
+                  isUserPlaylist: true, 
+                  tracks: cleanHistory 
+                } 
+              });
+            }}>
+              <Text style={styles.seeAllText}>See all</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {cleanHistory.length === 0 ? (
           <TouchableOpacity 
-            key={`${item.id}-${idx}`} 
-            style={styles.recentCard}
-            onPress={() => playTrack(item, recentlyPlayed.filter(t => !t.isSnippet))}
-            activeOpacity={0.8}
+            style={[styles.playlistRow, { opacity: 0.6 }]}
+            activeOpacity={1}
           >
-            <View style={styles.recentArtContainer}>
-              <Image 
-                source={{ uri: item.artwork || 'https://api.dicebear.com/7.x/initials/svg?seed=' + item.title }} 
-                style={styles.recentArt} 
-              />
-              <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={styles.recentArtOverlay} />
+            <View style={[styles.playlistArt, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 }]}>
+              <Ionicons name="time-outline" size={24} color="white" />
             </View>
-            <Text style={styles.recentTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.recentArtist} numberOfLines={1}>{item.artist}</Text>
+            <View style={styles.playlistInfo}>
+              <Text style={styles.playlistTitle}>No history yet</Text>
+              <Text style={styles.playlistMeta}>Songs you play will appear here</Text>
+            </View>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
+        ) : (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.recentScrollContent}
+          >
+            {cleanHistory.slice(0, 15).map((item, idx) => (
+              <TouchableOpacity 
+                key={`${item.id}-${idx}`} 
+                style={styles.recentCard}
+                onPress={() => playTrack(item, cleanHistory)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.recentArtContainer}>
+                  <Image 
+                    source={{ uri: item.artwork || 'https://api.dicebear.com/7.x/initials/svg?seed=' + item.title }} 
+                    style={styles.recentArt} 
+                  />
+                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={styles.recentArtOverlay} />
+                </View>
+                <Text style={styles.recentTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.recentArtist} numberOfLines={1}>{item.artist}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    );
+  };
+
+  const renderDownloads = () => {
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Downloads</Text>
+          {downloadedTracks && downloadedTracks.length > 0 && (
+            <TouchableOpacity onPress={() => {
+              navigation.navigate('PlaylistDetail', { 
+                playlist: { 
+                  id: 'downloads', 
+                  title: 'Downloads', 
+                  artist: 'Offline Songs',
+                  artwork: downloadedTracks[0]?.artwork || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500',
+                  isUserPlaylist: true, 
+                  tracks: downloadedTracks 
+                } 
+              });
+            }}>
+              <Text style={styles.seeAllText}>See all</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {!downloadedTracks || downloadedTracks.length === 0 ? (
+          <TouchableOpacity 
+            style={[styles.playlistRow, { opacity: 0.6 }]}
+            activeOpacity={1}
+          >
+            <View style={[styles.playlistArt, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 }]}>
+              <Ionicons name="cloud-offline-outline" size={24} color="white" />
+            </View>
+            <View style={styles.playlistInfo}>
+              <Text style={styles.playlistTitle}>No downloads yet</Text>
+              <Text style={styles.playlistMeta}>Songs you download will appear here</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            contentContainerStyle={styles.recentScrollContent}
+          >
+            {downloadedTracks.slice(0, 15).map((item, idx) => (
+              <TouchableOpacity 
+                key={`${item.id}-${idx}`} 
+                style={styles.recentCard}
+                onPress={() => playTrack(item, downloadedTracks)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.recentArtContainer}>
+                  <Image 
+                    source={{ uri: item.artwork || 'https://api.dicebear.com/7.x/initials/svg?seed=' + item.title }} 
+                    style={styles.recentArt} 
+                  />
+                  <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={styles.recentArtOverlay} />
+                </View>
+                <Text style={styles.recentTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.recentArtist} numberOfLines={1}>{item.artist}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </View>
+    );
+  };
 
   const renderPlaylists = () => {
     const allPlaylists = [...(userPlaylists || []), ...(likedPlaylists || [])];
@@ -262,7 +374,7 @@ export default function LibraryScreen({ navigation }) {
               Your Library
             </Animated.Text>
             <View style={styles.headerIcons}>
-              <TouchableOpacity style={styles.iconCircle}>
+              <TouchableOpacity style={styles.iconCircle} onPress={() => navigation.getParent()?.navigate('Search')}>
                 <Ionicons name="search" size={22} color="white" />
               </TouchableOpacity>
               <TouchableOpacity 
@@ -280,6 +392,7 @@ export default function LibraryScreen({ navigation }) {
             <>
               {renderLikedCard()}
               {renderRecentlyPlayed()}
+              {renderDownloads()}
               {renderPlaylists()}
             </>
           )}
@@ -287,16 +400,90 @@ export default function LibraryScreen({ navigation }) {
           {activeFilter === 'Playlists' && renderPlaylists()}
 
           {activeFilter === 'Artists' && (
-            <View style={styles.centerSection}>
-              <MaterialCommunityIcons name="account-music" size={80} color="rgba(255,255,255,0.05)" />
-              <Text style={styles.emptyText}>Liked artists will show up here</Text>
+            <View style={[styles.section, { paddingBottom: 100 }]}>
+              {uniqueArtists.length === 0 ? (
+                <View style={styles.centerSection}>
+                  <MaterialCommunityIcons name="account-music" size={80} color="rgba(255,255,255,0.05)" />
+                  <Text style={styles.emptyText}>Play songs to discover artists here</Text>
+                </View>
+              ) : (
+                uniqueArtists.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.playlistRow}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('PlaylistDetail', { 
+                      playlist: { id: item.id, title: item.name, isArtist: true, artwork: item.artwork } 
+                    })}
+                  >
+                    <Image 
+                      source={{ uri: item.artwork || 'https://api.dicebear.com/7.x/initials/svg?seed=' + item.name }} 
+                      style={[styles.playlistArt, { borderRadius: 32 }]} 
+                    />
+                    <View style={styles.playlistInfo}>
+                      <Text style={styles.playlistTitle}>{item.name}</Text>
+                      <Text style={styles.playlistMeta}>Artist</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.2)" />
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           )}
           
           {activeFilter === 'Albums' && (
-            <View style={styles.centerSection}>
-              <Ionicons name="disc-outline" size={80} color="rgba(255,255,255,0.05)" />
-              <Text style={styles.emptyText}>Saved albums will show up here</Text>
+            <View style={[styles.section, { paddingBottom: 100 }]}>
+              {likedAlbums.length === 0 ? (
+                <View style={styles.centerSection}>
+                  <Ionicons name="disc-outline" size={80} color="rgba(255,255,255,0.05)" />
+                  <Text style={styles.emptyText}>Like albums to see them here</Text>
+                </View>
+              ) : (
+                likedAlbums.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.playlistRow}
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('PlaylistDetail', { playlist: item })}
+                  >
+                    <Image source={{ uri: item.artwork || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200' }} style={styles.playlistArt} />
+                    <View style={styles.playlistInfo}>
+                      <Text style={styles.playlistTitle}>{item.title}</Text>
+                      <Text style={styles.playlistMeta}>Album • {item.artist || 'Unknown'}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.2)" />
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
+
+          {activeFilter === 'Downloads' && (
+            <View style={[styles.section, { paddingBottom: 100 }]}>
+              {!downloadedTracks || downloadedTracks.length === 0 ? (
+                <View style={styles.centerSection}>
+                  <Ionicons name="cloud-offline-outline" size={80} color="rgba(255,255,255,0.05)" />
+                  <Text style={styles.emptyText}>Downloaded songs will appear here</Text>
+                </View>
+              ) : (
+                downloadedTracks.map((item, idx) => (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.playlistRow}
+                    activeOpacity={0.7}
+                    onPress={() => playTrack(item, downloadedTracks)}
+                  >
+                    <Image source={{ uri: item.artwork || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200' }} style={styles.playlistArt} />
+                    <View style={styles.playlistInfo}>
+                      <Text style={styles.playlistTitle}>{item.title}</Text>
+                      <Text style={styles.playlistMeta}>{item.artist || 'Unknown'}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => removeDownload(item.id)} hitSlop={{top:15,bottom:15,left:15,right:15}}>
+                      <Ionicons name="trash-outline" size={20} color="#ff4444" />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                ))
+              )}
             </View>
           )}
         </SafeAreaView>

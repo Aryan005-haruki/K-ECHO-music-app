@@ -22,7 +22,8 @@ export default function FullScreenPlayer({ visible, onClose }) {
     currentTrack, isPlaying, togglePlay, playNext, playPrev, 
     progress, seekToRatio, liked, toggleLike, isLoading,
     queue, queueIndex, setQueue, repeatMode, cycleRepeat, 
-    isShuffle, toggleShuffle, playTrack, userPlaylists, addToUserPlaylist, createPlaylist
+    isShuffle, toggleShuffle, playTrack, userPlaylists, addToUserPlaylist, createPlaylist,
+    downloadTrack, downloadedTracks, removeDownload, downloadingIds
   } = usePlayer();
 
   const [isOptionsVisible, setIsOptionsVisible] = useState(false);
@@ -189,7 +190,13 @@ export default function FullScreenPlayer({ visible, onClose }) {
         setTimeout(() => setIsAddToPlaylistVisible(true), 300);
         break;
       case 'download':
-        if (Platform.OS === 'android') ToastAndroid.show(`Starting download: ${currentTrack.title}`, ToastAndroid.SHORT);
+        const isDownloaded = downloadedTracks?.some(t => t.id === currentTrack?.id);
+        if (isDownloaded) {
+          if (Platform.OS === 'android') ToastAndroid.show(`Already Downloaded`, ToastAndroid.SHORT);
+        } else {
+          if (Platform.OS === 'android') ToastAndroid.show(`Downloading ${currentTrack?.title || 'Song'}...`, ToastAndroid.SHORT);
+          downloadTrack(currentTrack);
+        }
         break;
       case 'share':
         Share.share({
@@ -315,8 +322,14 @@ export default function FullScreenPlayer({ visible, onClose }) {
               <TouchableOpacity onPress={() => handleAction('playlist')} style={styles.metaBtn}>
                 <MaterialCommunityIcons name="playlist-plus" size={28} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleAction('download')} style={styles.metaBtn}>
-                <Feather name="download" size={24} color="white" />
+              <TouchableOpacity onPress={() => handleAction('download')} style={styles.metaBtn} disabled={!!(currentTrack?.id && downloadingIds?.has?.(currentTrack.id))}>
+                {currentTrack?.id && downloadingIds?.has?.(currentTrack.id) ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : downloadedTracks?.some(t => String(t.id) === String(currentTrack?.id)) ? (
+                  <Ionicons name="cloud-done" size={24} color="#1DB954" />
+                ) : (
+                  <Feather name="download" size={24} color="white" />
+                )}
               </TouchableOpacity>
               <TouchableOpacity onPress={() => handleAction('like')} style={styles.likeBtn}>
                 <Ionicons 

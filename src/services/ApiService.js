@@ -9,19 +9,7 @@ const UA = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like G
 const SAAVN_BASE = 'https://www.jiosaavn.com/api.php';
 const DES_KEY    = '38346591';
 
-const PIPED_INSTANCES = [
-  'https://pipedapi.tokhmi.xyz',
-  'https://api.piped.privacydev.net',
-  'https://api-piped.mha.fi',
-  'https://pipedapi.official-vsh.fr',
-  'https://pipedapi.drgns.space'
-];
-
-function signalWithTimeout(ms) {
-  const controller = new AbortController();
-  setTimeout(() => controller.abort(), ms);
-  return controller.signal;
-}
+// JioSaavn + Apple iTunes APIs only
 
 async function fetchJSON(url, timeoutMs = 12000) {
   const ctrl = new AbortController();
@@ -50,6 +38,9 @@ function decryptMediaUrl(enc) {
     );
     let url = dec.toString(CryptoJS.enc.Utf8);
     url = url.replace(/_96\.mp4/, '_320.mp4').replace(/_160\.mp4/, '_320.mp4');
+    if (url && url.startsWith('http://')) {
+      url = url.replace('http://', 'https://');
+    }
     return url || null;
   } catch {
     return null;
@@ -214,11 +205,9 @@ async function setCache(key, data) {
 // Background Turbo Pre-fetcher
 export async function turboPreFetch() {
   console.log('🚀 Turbo Pre-fetch Started...');
-  // Fetch everything in parallel background
   Promise.allSettled([
     getAppleTrendingVideos(15),
     getTrendingIndia(20),
-    searchYouTube('trending music videos india', 10)
   ]);
 }
 
@@ -305,49 +294,7 @@ export async function getAppleTrendingVideos(limit = 20) {
 }
 
 
-export async function resolveYouTubeVideo(videoId) {
-  if (!videoId) return null;
-  
-  // Try Piped first
-  const piped = [
-    'https://api.piped.privacydev.net',
-    'https://pipedapi.tokhmi.xyz',
-    'https://api-piped.mha.fi'
-  ];
-  
-  for (const url of piped) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    try {
-      const res = await fetch(`${url}/streams/${videoId}`, { signal: ctrl.signal });
-      clearTimeout(t);
-      if (res.ok) {
-        const data = await res.json();
-        const videos = data.videoStreams || [];
-        // combined streams usually have videoOnly: false
-        const best = videos.find(v => v.videoOnly === false && v.mimeType.includes('mp4')) || 
-                     videos.find(v => v.mimeType.includes('mp4')) || 
-                     videos[0];
-        if (best) return best.url;
-      }
-    } catch { clearTimeout(t); continue; }
-  }
 
-  // Fallback to Invidious
-  const invidious = ['https://inv.nadeko.net', 'https://invidious.nerdvpn.de', 'https://yewtu.be'];
-  for (const url of invidious) {
-    try {
-      const res = await fetch(`${url}/api/v1/videos/${videoId}?fields=formatStreams`, { signal: signalWithTimeout(5000) });
-      if (res.ok) {
-        const data = await res.json();
-        const streams = data.formatStreams || [];
-        if (streams.length > 0) return streams[0].url;
-      }
-    } catch { continue; }
-  }
-  
-  return null;
-}
 
 export async function getTrendingTracks(limit = 20) {
   try {
@@ -551,54 +498,7 @@ export async function getTrendingByGenre(genre, limit = 20) {
   }
 }
 
-export async function searchYouTube(query, limit = 20) {
-  // Parallel fetch from top 3 instances for speed
-  const topInstances = PIPED_INSTANCES.slice(0, 3);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-  const fetchInstance = async (baseUrl) => {
-    try {
-      const res = await fetch(`${baseUrl}/search?q=${encodeURIComponent(query)}`, { signal: controller.signal });
-      if (res.ok) {
-        const data = await res.json();
-        return (data.items || []).filter(i => i.type === 'video' || i.type === 'short');
-      }
-    } catch { return null; }
-    return null;
-  };
-
-  try {
-    const results = await Promise.all(topInstances.map(fetchInstance));
-    const validData = results.find(r => r && r.length > 0);
-    clearTimeout(timeoutId);
-
-    if (validData) {
-      return validData.slice(0, limit).map(i => {
-        let id = '';
-        if (i.url.includes('v=')) id = i.url.split('v=')[1]?.split('&')[0];
-        else if (i.url.includes('/shorts/')) id = i.url.split('/shorts/')[1]?.split('?')[0];
-        else id = i.url.split('/').pop();
-        
-        if (!id) return null;
-        const song = {
-          id,
-          title: i.title,
-          artist: i.uploaderName || 'YouTube',
-          artwork: i.thumbnail,
-          duration: fmtSecs(i.duration),
-          durationSecs: i.duration,
-          isYouTube: true
-        };
-        if (!song.id || !song.title) return null;
-        return song;
-      }).filter(Boolean);
-    }
-  } catch (e) {
-    clearTimeout(timeoutId);
-  }
-  return [];
-}
 
 export async function searchPlaylists(query, limit = 5) {
   try {
@@ -881,27 +781,4 @@ export async function searchGlobal(query, limit = 20) {
   } catch (err) {
     return [];
   }
-}
-
-export async function resolveYouTubeStream(videoId) {
-  const instances = [
-    'https://pipedapi.tokhmi.xyz',
-    'https://api.piped.privacydev.net',
-    'https://api-piped.mha.fi'
-  ];
-  for (const url of instances) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 5000);
-    try {
-      const res = await fetch(`${url}/streams/${videoId}`, { signal: ctrl.signal });
-      clearTimeout(t);
-      if (res.ok) {
-        const data = await res.json();
-        const audios = data.audioStreams || [];
-        const best = audios.find(s => s.format === 'M4A' || s.codec === 'opus') || audios[0];
-        if (best) return best.url;
-      }
-    } catch { clearTimeout(t); continue; }
-  }
-  return null;
 }

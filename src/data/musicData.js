@@ -13,54 +13,6 @@ export const COLORS = {
   accent: '#1DB954',
 };
 
-const ART = {
-  starboy: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=400',
-  arijit:  'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=400',
-  theweeknd: 'https://images.unsplash.com/photo-1514525253361-b83f859b73c0?auto=format&fit=crop&q=80&w=400',
-  edsheeran: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&q=80&w=400',
-  dualipa: 'https://images.unsplash.com/photo-1459749411177-042180ceea72?auto=format&fit=crop&q=80&w=400',
-};
-
-export const featuredTrack = {
-  id: 'feat_1',
-  title: 'Starboy',
-  artist: 'The Weeknd',
-  album:  'Starboy',
-  artwork: ART.starboy,
-  duration: '3:50',
-  url: '', 
-  isYouTube: true,
-  color: '#7B2FBE',
-};
-
-export const recentlyPlayed = [
-  { id: 'r1', title: 'Blinding Lights', artist: 'The Weeknd', artwork: ART.theweeknd, duration: '3:20', url: '', isYouTube: true },
-  { id: 'r2', title: 'Kesariya', artist: 'Arijit Singh', artwork: ART.arijit, duration: '4:10', url: '', isYouTube: true },
-  { id: 'r3', title: 'Shape of You', artist: 'Ed Sheeran', artwork: ART.edsheeran, duration: '3:53', url: '', isYouTube: true },
-  { id: 'r4', title: 'Night Changes', artist: 'One Direction', artwork: ART.dualipa, duration: '3:46', url: '', isYouTube: true },
-  { id: 'r5', title: 'Levitating', artist: 'Dua Lipa', artwork: ART.dualipa, duration: '3:23', url: '', isYouTube: true },
-  { id: 'r6', title: 'Stay', artist: 'Justin Bieber', artwork: ART.starboy, duration: '2:21', url: '', isYouTube: true },
-];
-
-export const trendingTracks = [
-  { id: 't1', title: 'Heeriye', artist: 'Arijit Singh', artwork: ART.arijit, duration: '3:14', url: '', isYouTube: true },
-  { id: 't2', title: 'Die For You', artist: 'The Weeknd', artwork: ART.theweeknd, duration: '4:20', url: '', isYouTube: true },
-  { id: 't3', title: 'Peaches', artist: 'Justin Bieber', artwork: ART.starboy, duration: '3:18', url: '', isYouTube: true },
-  { id: 't4', title: 'Flowers', artist: 'Miley Cyrus', artwork: ART.dualipa, duration: '3:20', url: '', isYouTube: true },
-  { id: 't5', title: 'As It Was', artist: 'Harry Styles', artwork: ART.edsheeran, duration: '2:47', url: '', isYouTube: true },
-  { id: 't6', title: 'Under Influence', artist: 'Chris Brown', artwork: ART.theweeknd, duration: '3:04', url: '', isYouTube: true },
-];
-
-export const playlistTracks = trendingTracks;
-
-export const recommendedArtists = [
-  { id: 20, name: 'The Weeknd',   emoji: '⭐', color: '#250d35' },
-  { id: 21, name: 'Arijit Singh', emoji: '🎙️', color: '#0d2540' },
-  { id: 22, name: 'Dua Lipa',     emoji: '💃', color: '#0d3520' },
-  { id: 23, name: 'Justin Bieber', emoji: '🕺', color: '#2a1d0d' },
-  { id: 24, name: 'Ed Sheeran',   emoji: '🎸', color: '#1a0d35' },
-];
-
 export const browseMoods = [
   { label: 'Chill', dotColor: '#5c5cff', bgColor: '#1a1a2e' },
   { label: 'Commute', dotColor: '#00bcd4', bgColor: '#0d222b' },
@@ -109,24 +61,4 @@ export const browseGenres = [
   { label: 'Monsoon', dotColor: '#69f0ae', bgColor: '#123321' },
   { label: 'Pakistani', dotColor: '#00a86b', bgColor: '#06261a' },
   { label: 'Pop', dotColor: '#ff4081', bgColor: '#2e0a15' },
-];
-
-export const libraryItems = [
-  { id: 45, title: 'Liked Songs', type: 'Playlist', tracks: 156, emoji: '❤️', color: '#350d1a' },
-];
-
-export const genres = [
-  { label: 'Pop', emoji: '🎤', color: '#ff4081' },
-  { label: 'Hip-Hop', emoji: '🔥', color: '#2979ff' },
-  { label: 'Electronic', emoji: '⚡', color: '#7c4dff' },
-  { label: 'Indie', emoji: '🎸', color: '#ffab40' },
-  { label: 'Pakistani', emoji: '🇵🇰', color: '#00a86b' },
-  { label: 'Bhojpuri', emoji: '🎶', color: '#ffb300' },
-];
-
-export const moods = [
-  { id: 'm1', title: 'Chill', icon: '🍃', colors: ['#1a1a2e', '#16213e'] },
-  { id: 'm2', title: 'Workout', icon: '💪', colors: ['#190f33', '#2d1b69'] },
-  { id: 'm3', title: 'Romance', icon: '💖', colors: ['#330e1a', '#691b31'] },
-  { id: 'm4', title: 'Focus', icon: '🧠', colors: ['#0e2b26', '#1b695e'] },
 ];

@@ -3,13 +3,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, StyleSheet, Dimensions, FlatList,
   TouchableOpacity, Image, ActivityIndicator, StatusBar, Animated,
-  RefreshControl
+  RefreshControl, Share
 } from 'react-native';
 import { Video, ResizeMode } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { usePlayer } from '../context/PlayerContext';
-import { getAppleTrendingVideos, searchSaavnVideos, searchYouTube } from '../services/ApiService';
+import { getAppleTrendingVideos, searchSaavn } from '../services/ApiService';
 import Skeleton from '../components/Skeleton';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -26,7 +26,7 @@ function ReelItem({ video, isActive, isMuted, toggleMute, containerHeight }) {
   const heartAnim = useRef(new Animated.Value(0)).current;
   const lastTap = useRef(0);
 
-  const { playTrack, setIsFullPlayerVisible } = usePlayer();
+  const { playTrack, setIsFullPlayerVisible, toggleLike, liked } = usePlayer();
 
   useEffect(() => {
     if (isActive) {
@@ -45,17 +45,30 @@ function ReelItem({ video, isActive, isMuted, toggleMute, containerHeight }) {
     }
   }, [isActive, video.streamUrl]);
 
-  const handlePlayFull = () => {
-    const taggedVideo = { ...video, isSnippet: true };
-    playTrack(taggedVideo);
+  const handlePlayFull = async () => {
+    // Search Saavn for the full song and play it
+    try {
+      const query = `${video.title} ${video.artist}`;
+      const results = await searchSaavn(query, 1);
+      if (results.length > 0) {
+        playTrack(results[0], results, 0);
+      } else {
+        // Fallback: play the preview as a snippet
+        const taggedVideo = { ...video, isSnippet: false };
+        playTrack(taggedVideo);
+      }
+    } catch (e) {
+      const taggedVideo = { ...video, isSnippet: false };
+      playTrack(taggedVideo);
+    }
     setIsFullPlayerVisible(true);
   };
 
   const handleDoubleTap = () => {
     const now = Date.now();
     if (now - lastTap.current < 300) {
-      // Double tap detected: Local dummy like only
-      setLocalLiked(true);
+      // Double tap - like the song
+      toggleLike(video);
       setShowHeart(true);
       Animated.sequence([
         Animated.spring(heartAnim, { toValue: 1.2, useNativeDriver: true, friction: 3 }),
@@ -99,7 +112,7 @@ function ReelItem({ video, isActive, isMuted, toggleMute, containerHeight }) {
           />
         ) : (
           <View style={styles.placeholderContainer}>
-            <Image source={{ uri: video.artwork }} style={styles.video} blurRadius={20} />
+            <Image source={{ uri: video.artwork || 'https://api.dicebear.com/7.x/initials/svg?seed=' + (video.title || 'Video') }} style={styles.video} blurRadius={20} />
             {error && isActive && (
               <View style={styles.errorOverlay}>
                 <Ionicons name="alert-circle" size={50} color="rgba(255,255,255,0.5)" />
@@ -134,7 +147,7 @@ function ReelItem({ video, isActive, isMuted, toggleMute, containerHeight }) {
       <LinearGradient colors={['transparent', 'rgba(0,0,0,0.8)']} style={styles.overlay}>
         <View style={styles.bottomInfo}>
           <View style={styles.textRow}>
-            <Image source={{ uri: video.artwork }} style={styles.miniArt} />
+            <Image source={{ uri: video.artwork || 'https://api.dicebear.com/7.x/initials/svg?seed=' + (video.title || 'Video') }} style={styles.miniArt} />
             <View style={{ flex: 1 }}>
               <Text style={styles.videoTitle} numberOfLines={1}>{video.title}</Text>
               <Text style={styles.videoArtist} numberOfLines={1}>{video.artist}</Text>
@@ -154,11 +167,11 @@ function ReelItem({ video, isActive, isMuted, toggleMute, containerHeight }) {
             <Ionicons name={isMuted ? "volume-mute" : "volume-high"} size={24} color="white" />
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => setLocalLiked(!localLiked)}>
-          <Ionicons name={localLiked ? "heart" : "heart-outline"} size={36} color={localLiked ? "#FF2D55" : "white"} />
-          <Text style={styles.actionText}>{localLiked ? 'Liked' : 'Like'}</Text>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => toggleLike(video)}>
+          <Ionicons name={liked.has(String(video.id)) ? "heart" : "heart-outline"} size={36} color={liked.has(String(video.id)) ? "#FF2D55" : "white"} />
+          <Text style={styles.actionText}>{liked.has(String(video.id)) ? 'Liked' : 'Like'}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => Share.share({ message: `${video.title} by ${video.artist} - Discovered on K-ECHO!` })}>
           <Ionicons name="share-social" size={36} color="white" />
           <Text style={styles.actionText}>Share</Text>
         </TouchableOpacity>

@@ -15,17 +15,17 @@
 import {
   createContext, useContext, useState, useRef, useEffect, useCallback,
 } from 'react';
-import { BackHandler } from 'react-native';
+import { BackHandler, ToastAndroid, Platform } from 'react-native';
 import TrackPlayer, {
   Event, State, Capability, RepeatMode,
   AppKilledPlaybackBehavior,
   usePlaybackState, useProgress,
 } from 'react-native-track-player';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
 import { 
   searchGlobal, 
   getRadioSuggestions, 
-  resolveYouTubeStream, 
   searchSaavn 
 } from '../services/ApiService';
 import RecommendationService from '../services/RecommendationService';
@@ -40,6 +40,7 @@ const STORAGE_LIKED_PLAYLISTS = '@kecho_liked_playlists';
 const STORAGE_LIKED_TRACKS    = '@kecho_liked_tracks';
 const STORAGE_FEEDBACK        = '@kecho_feedback';
 const STORAGE_ONBOARDING      = '@kecho_onboarding';
+const STORAGE_DOWNLOADS       = '@kecho_downloads';
 const MAX_RECENT              = 50;
 
 const HEADERS = {
@@ -76,24 +77,12 @@ async function resolveUrl(track) {
   try {
     if (track.url) return { url: track.url, track };
     
-    // If it's a YouTube track
-    if (track.isYouTube) {
-      const streamUrl = await resolveYouTubeStream(track.id);
-      if (streamUrl) return { url: streamUrl, track };
-    }
-    
+    // Search Saavn by title + artist
     let q = track.searchTerm || `${track.title} ${track.artist}`;
     q = q.replace(/\(.*?\)|\[.*?\]/g, '').trim();
     const results = await searchSaavn(q, 1);
     if (results.length && results[0].url) {
       return { url: results[0].url, track: { ...track, ...results[0], id: track.id } };
-    }
-    
-    // Fallback to YouTube if Saavn search fails
-    const ytResults = await searchGlobal(q, 1);
-    if (ytResults.length && ytResults[0].isYouTube) {
-      const streamUrl = await resolveYouTubeStream(ytResults[0].id);
-      if (streamUrl) return { url: streamUrl, track: { ...track, ...ytResults[0], id: track.id } };
     }
   } catch (err) {
     console.error('resolveUrl error:', err);
@@ -147,6 +136,8 @@ export function PlayerProvider({ children }) {
   const [recentlyPlayed, setRecentlyPlayed] = useState([]);
   const [userPlaylists,  setUserPlaylists]  = useState([]);
   const [likedPlaylists, setLikedPlaylists] = useState([]);
+  const [downloadedTracks, setDownloadedTracks] = useState([]);
+  const [downloadingIds, setDownloadingIds] = useState(new Set());
   const [isLoading,      setIsLoading]      = useState(false);
   const [error,          setError]          = useState(null);
   const [feedback,       setFeedback]       = useState({ skips: {}, plays: {}, repeats: {} });
@@ -189,15 +180,24 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     async function loadPersisted() {
       try {
-        const [likedRaw, recentRaw, playlistsRaw, likedPlaylistsRaw, likedTracksRaw] = await Promise.all([
+        const [likedRaw, recentRaw, playlistsRaw, likedPlaylistsRaw, likedTracksRaw, downloadsRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_LIKED),
           AsyncStorage.getItem(STORAGE_RECENT),
           AsyncStorage.getItem(STORAGE_PLAYLISTS),
           AsyncStorage.getItem(STORAGE_LIKED_PLAYLISTS),
           AsyncStorage.getItem(STORAGE_LIKED_TRACKS),
+          AsyncStorage.getItem(STORAGE_DOWNLOADS),
         ]);
         const safeParse = (str, fallback = []) => {
-          try { return str ? JSON.parse(str) : fallback; } catch { return fallback; }
+          try {
+            if (!str) return fallback;
+            const parsed = JSON.parse(str);
+            if (parsed === null) return fallback;
+            if (Array.isArray(fallback) && !Array.isArray(parsed)) return fallback;
+            return parsed;
+          } catch {
+            return fallback;
+          }
         };
 
         setLiked(new Set(safeParse(likedRaw, [])));
@@ -205,6 +205,7 @@ export function PlayerProvider({ children }) {
         setUserPlaylists(safeParse(playlistsRaw, []));
         setLikedPlaylists(safeParse(likedPlaylistsRaw, []));
         setLikedTracks(safeParse(likedTracksRaw, []));
+        setDownloadedTracks(safeParse(downloadsRaw, []));
         
         const [feedbackRaw, onboardingRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_FEEDBACK),
@@ -777,6 +778,106 @@ export function PlayerProvider({ children }) {
 
   const searchYouTube = useCallback((query) => searchGlobal(query), []);
 
+  // ── DOWNLOADS ──────────────────────────────────────────────────────────────
+  const downloadTrack = useCallback(async (track) => {
+    if (!track || !track.id) return;
+    
+    // Add to downloadingIds state to show loader in UI
+    setDownloadingIds(prev => {
+      const next = new Set(prev);
+      next.add(track.id);
+      return next;
+    });
+
+    try {
+      // 1. Guard FileSystem availability
+      if (!FileSystem || !FileSystem.documentDirectory) {
+        throw new Error('Local file system storage is not available on this device');
+      }
+
+      // 2. Resolve stream url
+      const { url: streamUrl, track: resolvedTrack } = await resolveUrl(track);
+      if (!streamUrl) {
+        throw new Error('Could not resolve stream URL for download');
+      }
+
+      // 3. Prepare paths & sanitize filename to avoid folder path injection or special char issues
+      const fileExtension = 'mp3';
+      const safeId = String(track.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const localFilename = `track_${safeId}.${fileExtension}`;
+      const localUri = `${FileSystem.documentDirectory}${localFilename}`;
+
+      // 4. Download the file
+      console.log(`[Download] Downloading track ${track.id} from ${streamUrl} to ${localUri}...`);
+      const downloadResult = await FileSystem.downloadAsync(streamUrl, localUri, { headers: HEADERS });
+      
+      if (downloadResult.status !== 200) {
+        throw new Error(`Download failed with status ${downloadResult.status}`);
+      }
+
+      console.log(`[Download] Successfully downloaded to ${downloadResult.uri}`);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(`Downloaded "${track.title || 'Song'}" successfully!`, ToastAndroid.SHORT);
+      }
+
+      // 5. Update downloaded tracks list
+      const offlineTrack = {
+        ...resolvedTrack,
+        id: track.id,
+        url: downloadResult.uri, // Use the local file path!
+        isOffline: true,
+      };
+
+      setDownloadedTracks(prev => {
+        const filtered = prev.filter(t => t.id !== track.id);
+        const updated = [...filtered, offlineTrack];
+        AsyncStorage.setItem(STORAGE_DOWNLOADS, JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+
+    } catch (err) {
+      console.error(`[Download] Error downloading track ${track.id}:`, err);
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(`Download failed: ${err.message || 'Unknown Error'}`, ToastAndroid.LONG);
+      }
+    } finally {
+      // Remove from downloadingIds
+      setDownloadingIds(prev => {
+        const next = new Set(prev);
+        next.delete(track.id);
+        return next;
+      });
+    }
+  }, []);
+
+  const removeDownload = useCallback(async (trackId) => {
+    if (!trackId) return;
+    try {
+      if (!FileSystem || !FileSystem.documentDirectory) {
+        throw new Error('Local file system storage is not available on this device');
+      }
+      const safeId = String(trackId).replace(/[^a-zA-Z0-9_-]/g, '_');
+      const localFilename = `track_${safeId}.mp3`;
+      const localUri = `${FileSystem.documentDirectory}${localFilename}`;
+
+      // Check if file exists and delete it
+      const fileInfo = await FileSystem.getInfoAsync(localUri);
+      if (fileInfo.exists) {
+        await FileSystem.deleteAsync(localUri, { idempotent: true });
+        console.log(`[Download] Deleted local file: ${localUri}`);
+      }
+
+      // Update state
+      setDownloadedTracks(prev => {
+        const updated = prev.filter(t => t.id !== trackId);
+        AsyncStorage.setItem(STORAGE_DOWNLOADS, JSON.stringify(updated)).catch(() => {});
+        return updated;
+      });
+    } catch (err) {
+      console.error(`[Download] Error removing track ${trackId}:`, err);
+    }
+  }, []);
+
   // ── DERIVED ────────────────────────────────────────────────────────────────
   const progressRatio = progress.duration > 0
     ? progress.position / progress.duration : 0;
@@ -830,6 +931,10 @@ export function PlayerProvider({ children }) {
       setQueue,
       createPlaylist,
       addToUserPlaylist,
+      downloadedTracks,
+      downloadingIds,
+      downloadTrack,
+      removeDownload,
     }}>
 
       {children}

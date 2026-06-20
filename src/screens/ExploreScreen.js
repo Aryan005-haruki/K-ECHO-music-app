@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  StatusBar, Image, ActivityIndicator, Animated, Dimensions
+  StatusBar, Image, ActivityIndicator, Animated, Dimensions, ToastAndroid
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -10,7 +10,7 @@ import { useIsFocused } from '@react-navigation/native';
 import { COLORS } from '../data/musicData';
 import { usePlayer } from '../context/PlayerContext';
 import { 
-  getTrendingTracks, searchPlaylists, searchSaavn, searchYouTube, getTrendingIndia, 
+  getTrendingTracks, searchPlaylists, searchSaavn, getTrendingIndia, 
   getGlobalTopHits, getNewReleases, getArtistSpotlight 
 } from '../services/ApiService';
 import Skeleton from '../components/Skeleton';
@@ -191,9 +191,16 @@ export default function ExploreScreen({ navigation }) {
                     <Ionicons name="play" size={20} color="black" />
                     <Text style={styles.spotlightPlayText}>Play Hits</Text>
                   </View>
-                  <View style={styles.spotlightFollow}>
+                  <TouchableOpacity 
+                    style={styles.spotlightFollow}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      ToastAndroid.show(`Following ${spotlight.artist}`, ToastAndroid.SHORT);
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <Ionicons name="add" size={20} color="white" />
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
